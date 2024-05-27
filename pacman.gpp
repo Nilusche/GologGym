@@ -1,0 +1,121 @@
+symbol domain location = { (x, y) | x in 0..2, y in 0..2 } // Define a 3x3 grid
+symbol domain dot = { (x, y) | x in 0..2, y in 0..2 } // Dots placed on the grid
+symbol domain capsule = { (x, y) | x in 0..2, y in 0..2 } // Capsules placed on the grid
+symbol domain ghost = { (x, y) | x in 0..2, y in 0..2 } // Ghost locations
+
+location fluent loc_pacman(location l) {
+initially:
+    (0, 0) = true;  // Pac-Man starts at the top-left corner
+}
+
+boolean fluent dot_present(dot d) {
+initially:
+    (0, 1) = true;
+    (1, 2) = true;
+    (2, 0) = true;
+}
+
+boolean fluent capsule_present(capsule c) {
+initially:
+    (1, 1) = true;
+}
+
+boolean fluent ghost_present(ghost g) {
+initially:
+    (2, 2) = true;  // Ghost starts at the bottom-right corner
+}
+
+boolean fluent pacman_powered_up() {
+initially:
+    false;
+}
+
+integer fluent power_up_timer() {
+initially:
+    0;
+}
+
+action move(location from, location to) {
+precondition:
+    loc_pacman(from)
+    & adjacent(from, to)  // Move to an adjacent cell
+
+effect:
+    loc_pacman(from) = false;
+    loc_pacman(to) = true;
+    if (pacman_powered_up()) {
+        power_up_timer() -= 1;
+        if (power_up_timer() == 0) {
+            pacman_powered_up() = false;
+        }
+    }
+}
+
+action eat_dot(dot d) {
+precondition:
+    loc_pacman(d)
+    & dot_present(d)
+
+effect:
+    dot_present(d) = false;
+}
+
+action eat_capsule(capsule c) {
+precondition:
+    loc_pacman(c)
+    & capsule_present(c)
+
+effect:
+    capsule_present(c) = false;
+    pacman_powered_up() = true;
+    power_up_timer() = 10;  // Pac-Man is powered up for 10 moves
+}
+
+action eat_ghost(ghost g) {
+precondition:
+    pacman_powered_up()
+    & loc_pacman(g)
+    & ghost_present(g)
+
+effect:
+    ghost_present(g) = false;
+}
+
+procedure find_and_eat_capsule() {
+    // Define logic to find and eat a capsule
+}
+
+procedure find_and_eat_ghost() {
+    // Define logic to find and eat the ghost
+}
+
+procedure find_and_eat_food() {
+    // Define logic to find and eat all the food
+}
+
+procedure play() {
+    find_and_eat_capsule();
+    find_and_eat_ghost();
+    find_and_eat_food();
+}
+
+bool function goal() =
+    forall(dot d) !dot_present(d) // All dots are eaten
+
+number function reward() =
+    if (goal())
+        100
+    else if (pacman_powered_up())
+        5
+    else if (exists(dot d) dot_present(d) && loc_pacman(d))
+        10
+    else if (exists(capsule c) capsule_present(c) && loc_pacman(c))
+        20
+    else if (exists(ghost g) pacman_powered_up() && loc_pacman(g) && ghost_present(g))
+        50
+    else
+        -1
+
+procedure main() {
+    play()
+}
