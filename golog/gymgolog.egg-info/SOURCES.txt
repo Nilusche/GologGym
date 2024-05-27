@@ -1,0 +1,6 @@
+setup.py
+gymgolog.egg-info/PKG-INFO
+gymgolog.egg-info/SOURCES.txt
+gymgolog.egg-info/dependency_links.txt
+gymgolog.egg-info/requires.txt
+gymgolog.egg-info/top_level.txt
