@@ -5,6 +5,7 @@ GologGym is an OpenAI Gym environment tailored for Golog programs. It provides a
 1. [Introduction](#introduction)
 2. [Features](#features)
 3. [Installation](#installation)
+4. [Folders](#folders)
 4. [Start](#Start)
 5. [Examples](#examples)
 
@@ -20,8 +21,11 @@ Run `pip install -e golog` to register the golog environment <br>
 Use the classes `GologAction`, `GologState` from `utils.golog_utils` to define golog state and actions for the program initiation <br>
 Use `utils.mcts` to utilize custom mcts implementation <br>
 
+# Folders
+
+
 # Start
-## Creating Your Golog Environment
+## Creating Your Own Golog Environment / Extending the GologEnv
 To create a custom Golog environment, follow these steps:
 1. **Define Your Golog Program**: Create a Golog program that specifies the behavior and logic of your environment.
 2. **Implement the Environment**: Instantiate the Golog Environment with the GologState and GologActions
