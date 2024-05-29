@@ -12,8 +12,8 @@ GologGym is an OpenAI Gym environment tailored for Golog programs. It provides a
 GologGym integrates the powerful decision-making capabilities of Golog with the versatile and widely-used OpenAI Gym environment. This allows developers and researchers to leverage Golog’s high-level programming constructs in the context of reinforcement learning and other AI research areas.
 
 # Features
-*Flexible Environment*: Easily define and manipulate Golog programs within a Gym-compatible framework. <br>
-*Extensible*: Add new Golog operators and predicates to suit the needs of the specific domain. <br>
+**Flexible Environment**: Easily define and manipulate Golog programs within a Gym-compatible framework. <br>
+**Extensible**: Add new Golog operators and predicates to suit the needs of the specific domain. <br>
 
 # Installation
 Run `pip install -e golog` to register the golog environment <br>
@@ -23,14 +23,14 @@ Use `utils.mcts` to utilize custom mcts implementation <br>
 # Start
 ## Creating Your Golog Environment
 To create a custom Golog environment, follow these steps:
-1. *Define Your Golog Program*: Create a Golog program that specifies the behavior and logic of your environment.
-2. *Implement the Environment*: Instantiate the Golog Environment with the GologState and GologActions
-3. *Register the Environment*: Register the environment using the `register` function
+1. **Define Your Golog Program**: Create a Golog program that specifies the behavior and logic of your environment.
+2. **Implement the Environment**: Instantiate the Golog Environment with the GologState and GologActions
+3. **Register the Environment**: Register the environment using the `register` function
 
 # Examples
 Check out the examples folder for various sample Golog programs and environments. These examples demonstrate how to create and interact with different Golog-based environments.
-* Blocksworld Example: Environment Implementation can be found in blocksworld_golog.py 
-* Pacman Example: Environment Implementation can be found in pacman_golog.py
+* **Blocksworld Example**: Environment Implementation can be found in blocksworld_golog.py 
+* **Pacman Example**: Environment Implementation can be found in pacman_golog.py
 
 
 
