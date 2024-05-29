@@ -6,7 +6,7 @@ GologGym is an OpenAI Gym environment tailored for Golog programs. It provides a
 2. [Features](#features)
 3. [Installation](#installation)
 4. [Folders](#folders)
-4. [Start](#Start)
+4. [Start](#start)
 5. [Examples](#examples)
 
 # Introduction
@@ -34,8 +34,46 @@ Use `utils.mcts` to utilize custom mcts implementation <br>
 To define your golog program as env follow these steps:
 1. **Define your domain**: The domain includes all the objects, fluents (variables that describe the state of the world), and initial state of the environment
 2. **Define your actions**: Actions are defined by their preconditions and effects. Preconditions are conditions that must be true for the action to be executed, and effects describe how the state changes after the action is executed.
-3. **Create the Environment**: Now create the Golog environment using the initial state, actions and goal function.
-Example:
+3. **Create the Environment**: Now create the Golog environment using the initial state, actions, goal and reward function.
+
+A sample environment in pseudocode could look like this:
+```
+symbol domain block = {a, b, c}
+symbol domain location = block | {table}
+
+location fluent loc(block x) {
+initially:
+    (a) = c;
+    (b) = table;
+    (c) = b;
+}
+
+action stack(block x, location y) {
+precondition:
+      x != y // Can't stack x on x
+    & x != table // Can't stack table
+    & loc(x) != y // Can't stack the same thing twice
+    & (!exists(block z) loc(z) == x) // Nothing is on x
+    & (
+        y == table // either y is the table...
+        | !exists(block z) loc(z) == y // or nothing is on y
+    )
+
+effect:
+    loc(x) = y;
+}
+
+bool function goal() =
+    loc(a) == table & loc(b) == a & loc(c) == b
+
+number function reward() =
+    if (goal())
+        100
+    else
+        -1
+```
+
+Example Environment Implementation:
 ```python
 def stack_precondition(state, x, y):
     return x != y and x != 'table' and state.fluents[f'loc({x})'].value != y and not any(state.fluents[f'loc({z})'].value == x for z in state.symbols['block'])
@@ -62,6 +100,9 @@ initial_state.add_action(stack_action)
 actions = [
     GologAction('stack', stack_precondition, stack_effect, ['block', 'location']),
 ]
+
+#Notice the reward function has not been redefined here as it uses a default reward function (the one mentioned in the pseudocode)
+
 #Create the Environment
 env = gym.make('Golog-v0', initial_state=initial_state, goal_function=blocksworld_goal, actions=actions)
 ```
