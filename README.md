@@ -13,6 +13,7 @@ GologGym is an OpenAI Gym environment tailored for Golog programs. It provides a
 GologGym integrates the powerful decision-making capabilities of Golog with the versatile and widely-used OpenAI Gym environment. This allows developers and researchers to leverage Golog’s high-level programming constructs in the context of reinforcement learning and other AI research areas.
 
 # Features
+**Seamless Integration**: Combine the high-level action languages of Golog with the robust reinforcement learning environment of OpenAI Gym.
 **Flexible Environment**: Easily define and manipulate Golog programs within a Gym-compatible framework. <br>
 **Extensible**: Add new Golog operators and predicates to suit the needs of the specific domain. <br>
 
