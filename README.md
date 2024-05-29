@@ -24,7 +24,7 @@ Use `utils.mcts` to utilize custom mcts implementation <br>
 
 # Folders
 * `/examples`: Contains example environment for the Blocksworld and Pacman in Prolog Environment
-* `files`: Contains the pseudo language files to define the Blocksworld and Pacman Environment
+* `/files`: Contains the pseudo language files to define the Blocksworld and Pacman Environment
 * `/golog`: Contains the Golog Environment implementation
 * `/utils`: Contains utility functions for Golog Environment
 
