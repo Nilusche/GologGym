@@ -4,7 +4,6 @@ import gym
 from examples.blocksworld_golog import env
 from utils.mcts import GologNode, Policy_Player_MCTS
 
-
 def main():
     reward_e = 0 
     observation = env.reset()
@@ -15,10 +14,11 @@ def main():
 
     while not done:
         print(f"Step {step_counter}: Starting MCTS")
-        mytree, action_index, args = Policy_Player_MCTS(mytree)
-        observation, reward, done, _ = env.step((action_index, args))
+        mytree, action_index = Policy_Player_MCTS(mytree)
+        observation, reward, done, _ = env.step(action_index)
         reward_e += reward
-        print(f"Step {step_counter}: Executing action: {env.state.actions[action_index].name} with args {args}")
+        action = env.action_arg_combinations[action_index]
+        print(f"Step {step_counter}: Executing action: {env.state.actions[action[0]].name} with args {action[1:]}")
         env.render()
 
         if done:
@@ -27,7 +27,6 @@ def main():
             break
         
         step_counter += 1
-
 
 if __name__ == "__main__":
     main()

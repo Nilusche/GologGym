@@ -1,6 +1,6 @@
 import golog
 import time
-from utils.golog_utils import GologState, GologAction
+from golog.envs.golog_env import GologState, GologAction
 import gym
 import pygame
 

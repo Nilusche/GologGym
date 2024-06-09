@@ -3,7 +3,7 @@ from collections import deque
 import copy
 import gym
 from examples.blocksworld_golog import env, blocksworld_goal
-
+import copy
 
 
 def bfs_solve(env):
@@ -16,15 +16,16 @@ def bfs_solve(env):
         if blocksworld_goal(current_state):
             return action_sequence
         
-        for action_index, action in enumerate(env.state.actions):
-            for block in env.state.symbols['block']:
-                for location in env.state.symbols['location']:
-                    if action.precondition(current_state, block, location):
-                        next_state = copy.deepcopy(current_state)
-                        action.effect(next_state, block, location)
-                        if next_state not in visited:
-                            visited.add(next_state)
-                            queue.append((next_state, action_sequence + [(action_index, block, location)]))
+        for action_index, action_args in enumerate(env.action_arg_combinations):
+            action = env.state.actions[action_args[0]]
+            args = action_args[1]
+            if action.precondition(current_state, *args):
+                next_state = copy.deepcopy(current_state)
+                action.effect(next_state, *args)
+                state_hash = hash(frozenset((fluent, fl.value) for fluent, fl in next_state.fluents.items()))
+                if state_hash not in visited:
+                    visited.add(state_hash)
+                    queue.append((next_state, action_sequence + [(action_index, *args)]))
     
     return None
 
@@ -32,13 +33,14 @@ def main():
     solution = bfs_solve(env)
     if solution:
         print("Solution found:")
-        for step, (action_index, block, location) in enumerate(solution):
-            print(f"Step {step + 1}: {env.state.actions[action_index].name}({block}, {location})")
+        for step, (action_index, *args) in enumerate(solution):
+            action = env.state.actions[env.action_arg_combinations[action_index][0]]
+            print(f"Step {step + 1}: {action.name}{tuple(args)}")
         
         # Apply the solution actions to the environment
         env.reset()
-        for action_index, block, location in solution:
-            env.step((action_index, [block, location]))
+        for action_index, *args in solution:
+            env.step(action_index)
         
         # Render the final state
         env.render()
