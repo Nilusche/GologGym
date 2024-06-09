@@ -10,19 +10,19 @@ import pygame
 initial_state = GologState()
 initial_state.add_symbol('location', [(x, y) for x in range(3) for y in range(3)])
 initial_state.add_symbol('dot', [(x, y) for x in range(3) for y in range(3)])
-initial_state.add_symbol('capsule', [(x, y) for x in range(3) for y in range(3)])
+#initial_state.add_symbol('capsule', [(x, y) for x in range(3) for y in range(3)])
 initial_state.add_symbol('ghost', [(x, y) for x in range(3) for y in range(3)])
 
 initial_state.add_fluent('loc(pacman)', initial_state.symbols['location'], (0, 0))
 initial_state.add_fluent('ghost_present((2, 2))', [True, False], True)
-initial_state.add_fluent('pacman_powered_up()', [True, False], False)
-initial_state.add_fluent('power_up_timer()', list(range(11)), 0)
+#initial_state.add_fluent('pacman_powered_up()', [True, False], False)
+#initial_state.add_fluent('power_up_timer()', list(range(11)), 0)
 
 for dot in initial_state.symbols['dot']:
     initial_state.add_fluent(f'dot_present({dot})', [True, False], dot in [(0, 1), (1, 2), (2, 0)])
 
-for capsule in initial_state.symbols['capsule']:
-    initial_state.add_fluent(f'capsule_present({capsule})', [True, False], capsule in [(1, 1)])
+# for capsule in initial_state.symbols['capsule']:
+#     initial_state.add_fluent(f'capsule_present({capsule})', [True, False], capsule in [(1, 1)])
 
 for ghost in initial_state.symbols['ghost']:
     if ghost != (2, 2):  # Avoid reinitializing (2, 2)
@@ -35,15 +35,16 @@ def adjacent(from_loc, to_loc):
     return abs(fx - tx) + abs(fy - ty) == 1
 
 # Define actions
-def move_precondition(state, from_loc, to_loc):
+def move_precondition(state, to_loc):
+    from_loc = state.fluents['loc(pacman)'].value
     return state.fluents[f'loc(pacman)'].value == from_loc and adjacent(from_loc, to_loc)
 
-def move_effect(state, from_loc, to_loc):
+def move_effect(state, to_loc):
     state.fluents[f'loc(pacman)'].set_value(to_loc)
-    if state.fluents['pacman_powered_up()'].value:
-        state.fluents['power_up_timer()'].set_value(state.fluents['power_up_timer()'].value - 1)
-        if state.fluents['power_up_timer()'].value == 0:
-            state.fluents['pacman_powered_up()'].set_value(False)
+    # if state.fluents['pacman_powered_up()'].value:
+    #     state.fluents['power_up_timer()'].set_value(state.fluents['power_up_timer()'].value - 1)
+    #     if state.fluents['power_up_timer()'].value == 0:
+    #         state.fluents['pacman_powered_up()'].set_value(False)
 
 def eat_dot_precondition(state, d):
     return state.fluents[f'loc(pacman)'].value == d and state.fluents[f'dot_present({d})'].value
@@ -51,26 +52,26 @@ def eat_dot_precondition(state, d):
 def eat_dot_effect(state, d):
     state.fluents[f'dot_present({d})'].set_value(False)
 
-def eat_capsule_precondition(state, c):
-    return state.fluents[f'loc(pacman)'].value == c and state.fluents[f'capsule_present({c})'].value
+# def eat_capsule_precondition(state, c):
+#     return state.fluents[f'loc(pacman)'].value == c and state.fluents[f'capsule_present({c})'].value
 
-def eat_capsule_effect(state, c):
-    state.fluents[f'capsule_present({c})'].set_value(False)
-    state.fluents['pacman_powered_up()'].set_value(True)
-    state.fluents['power_up_timer()'].set_value(10)
+# def eat_capsule_effect(state, c):
+#     state.fluents[f'capsule_present({c})'].set_value(False)
+#     state.fluents['pacman_powered_up()'].set_value(True)
+#     state.fluents['power_up_timer()'].set_value(10)
 
-def eat_ghost_precondition(state, g):
-    return state.fluents['pacman_powered_up()'].value and state.fluents[f'loc(pacman)'].value == g and state.fluents[f'ghost_present({g})'].value
+# def eat_ghost_precondition(state, g):
+#     return state.fluents['pacman_powered_up()'].value and state.fluents[f'loc(pacman)'].value == g and state.fluents[f'ghost_present({g})'].value
 
-def eat_ghost_effect(state, g):
-    state.fluents[f'ghost_present({g})'].set_value(False)
+# def eat_ghost_effect(state, g):
+#     state.fluents[f'ghost_present({g})'].set_value(False)
 
 # Add actions to the environment
 actions = [
-    GologAction('move', move_precondition, move_effect, ['location', 'location']),
+    GologAction('move', move_precondition, move_effect, ['location']),
     GologAction('eat_dot', eat_dot_precondition, eat_dot_effect, ['dot']),
-    GologAction('eat_capsule', eat_capsule_precondition, eat_capsule_effect, ['capsule']),
-    GologAction('eat_ghost', eat_ghost_precondition, eat_ghost_effect, ['location']),
+    #GologAction('eat_capsule', eat_capsule_precondition, eat_capsule_effect, ['capsule']),
+    #GologAction('eat_ghost', eat_ghost_precondition, eat_ghost_effect, ['location']),
 ]
 
 # Define goal
@@ -79,20 +80,39 @@ def pacman_goal(state):
 
 # Define reward function
 def pacman_reward(state):
+    # If the goal is achieved, give a high reward
     if pacman_goal(state):
         return 100
-    if state.fluents['pacman_powered_up()'].value:
-        return 5
+    
+    reward = -1  # Default reward for each step to encourage efficiency
+
+    pacman_loc = state.fluents['loc(pacman)'].value
+
+    # Reward for eating dots
     for d in initial_state.symbols['dot']:
-        if state.fluents[f'dot_present({d})'].value and state.fluents[f'loc(pacman)'].value == d:
-            return 10
-    for c in initial_state.symbols['capsule']:
-        if state.fluents[f'capsule_present({c})'].value and state.fluents[f'loc(pacman)'].value == c:
-            return 20
+        if state.fluents[f'dot_present({d})'].value and pacman_loc == d:
+            reward += 10
+
+    # reward if pacman is at ghost position
     for g in initial_state.symbols['ghost']:
-        if state.fluents['pacman_powered_up()'].value and state.fluents[f'loc(pacman)'].value == g and state.fluents[f'ghost_present({g})'].value:
-            return 50
-    return -1
+        if state.fluents[f'ghost_present({g})'].value and pacman_loc == g:
+            reward -= 50
+
+    # Reward for eating capsules
+    # for c in initial_state.symbols['capsule']:
+    #     if state.fluents[f'capsule_present({c})'].value and pacman_loc == c:
+    #         reward += 20
+
+    # Reward for eating ghosts
+    # for g in initial_state.symbols['ghost']:
+    #     if state.fluents['pacman_powered_up()'].value and pacman_loc == g and state.fluents[f'ghost_present({g})'].value:
+    #         reward += 50
+
+    # # Small reward for staying powered up
+    # if state.fluents['pacman_powered_up()'].value:
+    #     reward += 5
+
+    return reward
 
 env = gym.make('Golog-v0', initial_state=initial_state, goal_function=pacman_goal, reward_function=pacman_reward, actions=actions)
 
@@ -135,14 +155,14 @@ def render():
                                 (margin + grid_size) * dot[1] + margin + grid_size // 2],
                             10)
 
-    # Draw capsules
-    for capsule in initial_state.symbols['capsule']:
-        if env.state.fluents[f'capsule_present({capsule})'].value:
-            pygame.draw.circle(screen,
-                            GREEN,
-                            [(margin + grid_size) * capsule[0] + margin + grid_size // 2,
-                                (margin + grid_size) * capsule[1] + margin + grid_size // 2],
-                            15)
+    # # Draw capsules
+    # for capsule in initial_state.symbols['capsule']:
+    #     if env.state.fluents[f'capsule_present({capsule})'].value:
+    #         pygame.draw.circle(screen,
+    #                         GREEN,
+    #                         [(margin + grid_size) * capsule[0] + margin + grid_size // 2,
+    #                             (margin + grid_size) * capsule[1] + margin + grid_size // 2],
+    #                         15)
 
     # Draw ghosts
     for ghost in initial_state.symbols['ghost']:
