@@ -22,9 +22,9 @@ class GologEnv(gym.Env):
         self.done = False
         self.state = copy.deepcopy(self.initial_state)
         self.state.actions = self.actions  # Ensure actions are accessible via state
-        return self._get_observation()
+        return self.get_observation()
     
-    def _get_observation(self):
+    def get_observation(self):
         observation = {}
         for fluent in self.state.fluents:
             observation[fluent] = self.state.fluents[fluent].value
@@ -37,9 +37,9 @@ class GologEnv(gym.Env):
             action.effect(self.state, *args)
             reward = self.reward_function(self.state)
             self.done = self.goal_function(self.state)
-            return self._get_observation(), reward, self.done, {}
+            return self.get_observation(), reward, self.done, {}
         else:
-            return self._get_observation(), -1, self.done, {}
+            return self.get_observation(), -1, self.done, {}
 
     def default_reward_function(self, state):
         return 100 if self.goal_function(state) else -1
