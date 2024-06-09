@@ -14,7 +14,7 @@ def main():
     while not done:
         print(f"Step {step_counter}: Starting MCTS")
         mytree, action_index = Policy_Player_MCTS(mytree)
-        observation, reward, done, _ = env.step(action_index)
+        observation, reward, _, done, _ = env.step(action_index)
         reward_e += reward
         action = env.action_arg_combinations[action_index]
         print(f"Step {step_counter}: Executing action: {env.state.actions[action[0]].name} with args {action[1:]}")

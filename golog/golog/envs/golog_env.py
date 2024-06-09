@@ -2,6 +2,7 @@ import gymnasium as gym
 from gymnasium import spaces
 import copy
 from itertools import product
+import numpy as np
 
 class GologEnv(gym.Env):
     def __init__(self, initial_state, goal_function, actions, reward_function=None):
@@ -12,6 +13,8 @@ class GologEnv(gym.Env):
         self.reward_function = reward_function if reward_function else self.default_reward_function
         self.actions = actions
         self.state.actions = actions  # Ensure actions are accessible via state
+        self.time_constraint = 100  # Default time constraint
+        self.time = 0
         
         # Generate all valid action-argument combinations
         self.action_arg_combinations = []
@@ -21,42 +24,53 @@ class GologEnv(gym.Env):
                 self.action_arg_combinations.append((action_index, args))
         
         self.action_space = spaces.Discrete(len(self.action_arg_combinations))
-        self.observation_space = spaces.Discrete(len(self.get_observation()))
+        self.observation_space = spaces.Box(low=0, high=1, shape=(len(self.get_observation()),), dtype=np.int32)
         self.done = False
         self.reset()
 
-    def reset(self):
+    def reset(self, seed=None):
         self.done = False
         self.state = copy.deepcopy(self.initial_state)
         self.state.actions = self.actions  # Ensure actions are accessible via state
-        return self.get_observation()
+        #create a numeric representation of the initial state
+        return self.get_observation(), {}
     
     def get_observation(self):
         observation = []
         for fluent in self.state.fluents:
             value = self.state.fluents[fluent].value
             observation.extend(self._encode_fluent_value(fluent, value))
-        return observation
+        return np.array(observation, dtype=np.int32)
 
     def _encode_fluent_value(self, fluent, value):
-        # Convert fluent and value to a numerical representation
+        # Convert fluent and value to a numerical representation for all fluents
         encoded = []
-        if value in self.state.symbols['location']:
-            idx = self.state.symbols['location'].index(value)
-            encoded = [0] * len(self.state.symbols['location'])
-            encoded[idx] = 1
+        for domain in self.state.symbols.keys():
+            if value in self.state.symbols[domain]:
+                idx = self.state.symbols[domain].index(value)
+                encoded = [0] * len(self.state.symbols[domain])
+                encoded[idx] = 1
+        
         return encoded
 
     def step(self, action):
         action_index, args = self.action_arg_combinations[action]
         action = self.state.actions[action_index]
+        terminal = False
+        truncated = False
+        reward = -1
+        self.time += 1
         if action.precondition(self.state, *args):
             action.effect(self.state, *args)
             reward = self.reward_function(self.state)
-            self.done = self.goal_function(self.state)
-            return self.get_observation(), reward, self.done, {}
-        else:
-            return self.get_observation(), -1, self.done, {}
+            self.done = self.goal_function(self.state)     
+        if self.done:
+            terminal = True
+        if self.time >= self.time_constraint:
+            terminal = True
+
+
+        return self.get_observation(), reward, terminal, self.done, {}
 
     def default_reward_function(self, state):
         return 100 if self.goal_function(state) else -1

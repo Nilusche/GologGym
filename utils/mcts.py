@@ -36,7 +36,7 @@ class GologNode:
         
         child = {}
         for action, game in zip(actions, games):
-            observation, reward, done, _ = game.step(action)
+            observation, reward, _, done, _ = game.step(action)
             child[action] = GologNode(game, self, done, observation, action)
         self.child = child
 
@@ -78,7 +78,7 @@ class GologNode:
 
         while not done:  # Prevent infinite loops
             action_index = new_game.action_space.sample()
-            observation, reward, done, _ = new_game.step(action_index)
+            observation, reward, _, done, _ = new_game.step(action_index)
             v += reward
             rollout_steps += 1
             if done:
