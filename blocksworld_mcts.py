@@ -1,6 +1,5 @@
 from copy import deepcopy
 import golog
-import gym
 from examples.blocksworld_golog import env
 from utils.mcts import GologNode, Policy_Player_MCTS
 

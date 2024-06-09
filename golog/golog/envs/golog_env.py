@@ -1,8 +1,7 @@
-import gym
-from gym import spaces
+import gymnasium as gym
+from gymnasium import spaces
 import copy
 from itertools import product
-import pygame
 
 class GologEnv(gym.Env):
     def __init__(self, initial_state, goal_function, actions, reward_function=None):
@@ -13,8 +12,16 @@ class GologEnv(gym.Env):
         self.reward_function = reward_function if reward_function else self.default_reward_function
         self.actions = actions
         self.state.actions = actions  # Ensure actions are accessible via state
-        self.action_space = spaces.Discrete(len(actions))
-        self.observation_space = spaces.Discrete(len(initial_state.fluents))
+        
+        # Generate all valid action-argument combinations
+        self.action_arg_combinations = []
+        for action_index, action in enumerate(actions):
+            valid_args = action.generate_valid_args(self.state)
+            for args in valid_args:
+                self.action_arg_combinations.append((action_index, args))
+        
+        self.action_space = spaces.Discrete(len(self.action_arg_combinations))
+        self.observation_space = spaces.Discrete(len(self.get_observation()))
         self.done = False
         self.reset()
 
@@ -25,13 +32,23 @@ class GologEnv(gym.Env):
         return self.get_observation()
     
     def get_observation(self):
-        observation = {}
+        observation = []
         for fluent in self.state.fluents:
-            observation[fluent] = self.state.fluents[fluent].value
+            value = self.state.fluents[fluent].value
+            observation.extend(self._encode_fluent_value(fluent, value))
         return observation
 
+    def _encode_fluent_value(self, fluent, value):
+        # Convert fluent and value to a numerical representation
+        encoded = []
+        if value in self.state.symbols['location']:
+            idx = self.state.symbols['location'].index(value)
+            encoded = [0] * len(self.state.symbols['location'])
+            encoded[idx] = 1
+        return encoded
+
     def step(self, action):
-        action_index, args = action
+        action_index, args = self.action_arg_combinations[action]
         action = self.state.actions[action_index]
         if action.precondition(self.state, *args):
             action.effect(self.state, *args)
@@ -56,4 +73,55 @@ class GologEnv(gym.Env):
         return action.generate_valid_args(self.state)
     
     def close(self):
-        pygame.quit()
+        pass  # No pygame used here
+
+class GologFluent:
+    def __init__(self, domain, value):
+        self.domain = domain
+        self.value = value
+
+    def set_value(self, value):
+        if value in self.domain:
+            self.value = value
+
+    def __repr__(self):
+        return str(self.value)
+
+class GologState:
+    def __init__(self):
+        self.symbols = {}
+        self.actions = []
+        self.fluents = {}
+
+    def add_symbol(self, symbol, domain):
+        self.symbols[symbol] = domain
+    
+    def add_fluent(self, fluent, domain, initial_value):
+        self.fluents[fluent] = GologFluent(domain, initial_value)
+
+    def add_action(self, action):
+        self.actions.append(action)
+    
+    def execute_action(self, action_index, *args):
+        action = self.actions[action_index]
+        if action.precondition(self, *args):
+            action.effect(self, *args)
+            return True
+        return False
+
+    def __hash__(self):
+        return hash(frozenset((fluent, fl.value) for fluent, fl in self.fluents.items()))
+
+    def __eq__(self, other):
+        return all(self.fluents[fluent].value == other.fluents[fluent].value for fluent in self.fluents)
+
+class GologAction:
+    def __init__(self, name, precondition, effect, arg_domains):
+        self.name = name
+        self.precondition = precondition
+        self.effect = effect
+        self.arg_domains = arg_domains
+
+    def generate_valid_args(self, state):
+        domains = [state.symbols[domain] for domain in self.arg_domains]
+        return list(product(*domains))

@@ -1,7 +1,7 @@
 import golog
 import time
 from golog.envs.golog_env import GologState, GologAction
-import gym
+import gymnasium as gym
 import pygame
 
 

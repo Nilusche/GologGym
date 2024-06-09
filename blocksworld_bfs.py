@@ -1,7 +1,6 @@
 import golog
 from collections import deque
 import copy
-import gym
 from examples.blocksworld_golog import env, blocksworld_goal
 import copy
 
