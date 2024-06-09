@@ -4,7 +4,7 @@ from copy import deepcopy
 import random
 
 class GologNode:
-    def __init__(self, game, parent, done, observation, action_index, args=None):
+    def __init__(self, game, parent, done, observation, action_index):
         self.child = None
         self.T = 0
         self.N = 0
@@ -13,7 +13,6 @@ class GologNode:
         self.done = done
         self.parent = parent
         self.action_index = action_index
-        self.args = args
 
     def get_UCB_score(self, c=1.0):
         if self.N == 0:
@@ -32,20 +31,13 @@ class GologNode:
         if self.done:
             return
 
-        actions = []
-        games = []
-        for i in range(self.game.action_space.n):
-            actions.append(i)
-            new_game = deepcopy(self.game)
-            games.append(new_game)
+        actions = list(range(self.game.action_space.n))
+        games = [deepcopy(self.game) for _ in actions]
         
         child = {}
         for action, game in zip(actions, games):
-            valid_args = game.generate_valid_args(action)
-            for args in valid_args:
-                if game.state.actions[action].precondition(game.state, *args):
-                    observation, reward, done, _ = game.step((action, args))
-                    child[(action, *args)] = GologNode(game, self, done, observation, action, args)
+            observation, reward, done, _ = game.step(action)
+            child[action] = GologNode(game, self, done, observation, action)
         self.child = child
 
     def explore(self):
@@ -84,16 +76,11 @@ class GologNode:
         new_game = deepcopy(self.game)
         rollout_steps = 0
 
-        while not done and rollout_steps < 100:  # Prevent infinite loops
+        while not done:  # Prevent infinite loops
             action_index = new_game.action_space.sample()
-            valid_args = new_game.generate_valid_args(action_index)
-            if not valid_args:
-                continue
-            args = random.choice(valid_args)
-            if new_game.state.actions[action_index].precondition(new_game.state, *args):
-                _, reward, done, _ = new_game.step((action_index, args))
-                v += reward
-                rollout_steps += 1
+            observation, reward, done, _ = new_game.step(action_index)
+            v += reward
+            rollout_steps += 1
             if done:
                 new_game.reset()
                 new_game.close()
@@ -117,7 +104,7 @@ class GologNode:
 
         max_child = random.choice(max_children)
 
-        return max_child, max_child.action_index, max_child.args
+        return max_child, max_child.action_index
 
 
 MCTS_POLICY_EXPLORE = 100  # Number of MCTS iterations
@@ -126,7 +113,7 @@ def Policy_Player_MCTS(mytree):
     for _ in range(MCTS_POLICY_EXPLORE):
         mytree.explore()
     
-    next_tree, next_action, next_args = mytree.next()
+    next_tree, next_action = mytree.next()
 
     next_tree.detach_parent()
-    return next_tree, next_action, next_args
+    return next_tree, next_action
