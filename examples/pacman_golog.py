@@ -8,113 +8,108 @@ import pygame
 
 # Define the Pac-Man environment
 initial_state = GologState()
+
+# Define domains
+initial_state.add_symbol('actor', ['pacman', 'dot', 'ghost'])
 initial_state.add_symbol('location', [(x, y) for x in range(3) for y in range(3)])
-initial_state.add_symbol('dot', [(x, y) for x in range(3) for y in range(3)])
-#initial_state.add_symbol('capsule', [(x, y) for x in range(3) for y in range(3)])
-initial_state.add_symbol('ghost', [(x, y) for x in range(3) for y in range(3)])
+initial_state.add_symbol('direction', [(0, 1), (1, 0), (0, -1), (-1, 0)])
 
-initial_state.add_fluent('loc(pacman)', initial_state.symbols['location'], (0, 0))
-initial_state.add_fluent('ghost_present((2, 2))', [True, False], True)
-#initial_state.add_fluent('pacman_powered_up()', [True, False], False)
-#initial_state.add_fluent('power_up_timer()', list(range(11)), 0)
+# Define fluents
+initial_state.add_fluent('at(pacman)', initial_state.symbols['location'], (0, 0))
+initial_state.add_fluent('scared', [True, False], False)
+initial_state.add_fluent('nearest_dot_distance', list(range(9)), 8)  # Initial distance to the nearest dot
+initial_state.add_fluent('dots_remaining', list(range(10)), 3)  # Initial number of dots
+initial_state.add_fluent('nearest_ghost_distance', list(range(9)), 8)  # Initial distance to the nearest ghost
 
-for dot in initial_state.symbols['dot']:
-    initial_state.add_fluent(f'dot_present({dot})', [True, False], dot in [(0, 1), (1, 2), (2, 0)])
-
-# for capsule in initial_state.symbols['capsule']:
-#     initial_state.add_fluent(f'capsule_present({capsule})', [True, False], capsule in [(1, 1)])
-
-for ghost in initial_state.symbols['ghost']:
-    if ghost != (2, 2):  # Avoid reinitializing (2, 2)
-        initial_state.add_fluent(f'ghost_present({ghost})', [True, False], False)
+for location in initial_state.symbols['location']:
+    #add food to every location except the starting location and the ghost location in a 3x3 grid
+    has_dot = location != (0, 0) and location != (2, 2)
+    initial_state.add_fluent(f'at(dot,{location})', [True, False], has_dot)
+    initial_state.add_fluent(f'dot_eaten({location})', [True, False], False)
+    initial_state.add_fluent(f'at(ghost,{location})', [True, False], location == (2, 2))
 
 # Helper function to check adjacency
-def adjacent(from_loc, to_loc):
-    fx, fy = from_loc
-    tx, ty = to_loc
-    return abs(fx - tx) + abs(fy - ty) == 1
+def adjacent(loc1, loc2):
+    x1, y1 = loc1
+    x2, y2 = loc2
+    return abs(x1 - x2) + abs(y1 - y2) == 1
 
-# Define actions
-def move_precondition(state, to_loc):
-    from_loc = state.fluents['loc(pacman)'].value
-    return state.fluents[f'loc(pacman)'].value == from_loc and adjacent(from_loc, to_loc)
+# Helper function to calculate Manhattan distance
+def manhattan_distance(loc1, loc2):
+    return abs(loc1[0] - loc2[0]) + abs(loc1[1] - loc2[1])
 
-def move_effect(state, to_loc):
-    state.fluents[f'loc(pacman)'].set_value(to_loc)
-    # if state.fluents['pacman_powered_up()'].value:
-    #     state.fluents['power_up_timer()'].set_value(state.fluents['power_up_timer()'].value - 1)
-    #     if state.fluents['power_up_timer()'].value == 0:
-    #         state.fluents['pacman_powered_up()'].set_value(False)
+# Define the primitive actions
+def move_direction_precondition(state, direction):
+    from_loc = state.fluents['at(pacman)'].value
+    to_loc = (from_loc[0] + direction[0], from_loc[1] + direction[1])
+    return from_loc == state.fluents['at(pacman)'].value and to_loc in state.symbols['location']
 
-def eat_dot_precondition(state, d):
-    return state.fluents[f'loc(pacman)'].value == d and state.fluents[f'dot_present({d})'].value
+def move_direction_effect(state, direction):
+    from_loc = state.fluents['at(pacman)'].value
+    to_loc = (from_loc[0] + direction[0], from_loc[1] + direction[1])
+    state.fluents['at(pacman)'].set_value(to_loc)
 
-def eat_dot_effect(state, d):
-    state.fluents[f'dot_present({d})'].set_value(False)
+    # Update scared fluent
+    state.fluents['scared'].set_value(any(adjacent(to_loc, loc) for loc in state.symbols['location'] if state.fluents[f'at(ghost,{loc})'].value))
+    
+    # Update nearest dot distance
+    nearest_dot_distance = min(manhattan_distance(to_loc, loc) for loc in state.symbols['location'] if state.fluents[f'at(dot,{loc})'].value)
+    state.fluents['nearest_dot_distance'].set_value(nearest_dot_distance)
+    
+    # Update nearest ghost distance
+    nearest_ghost_distance = min(manhattan_distance(to_loc, loc) for loc in state.symbols['location'] if state.fluents[f'at(ghost,{loc})'].value)
+    state.fluents['nearest_ghost_distance'].set_value(nearest_ghost_distance)
 
-# def eat_capsule_precondition(state, c):
-#     return state.fluents[f'loc(pacman)'].value == c and state.fluents[f'capsule_present({c})'].value
+def eat_dot_precondition(state, location):
+    return state.fluents['at(pacman)'].value == location and state.fluents[f'at(dot,{location})'].value
 
-# def eat_capsule_effect(state, c):
-#     state.fluents[f'capsule_present({c})'].set_value(False)
-#     state.fluents['pacman_powered_up()'].set_value(True)
-#     state.fluents['power_up_timer()'].set_value(10)
-
-# def eat_ghost_precondition(state, g):
-#     return state.fluents['pacman_powered_up()'].value and state.fluents[f'loc(pacman)'].value == g and state.fluents[f'ghost_present({g})'].value
-
-# def eat_ghost_effect(state, g):
-#     state.fluents[f'ghost_present({g})'].set_value(False)
+def eat_dot_effect(state, location):
+    state.fluents[f'at(dot,{location})'].set_value(False)
+    state.fluents[f'dot_eaten({location})'].set_value(True)
+    state.fluents['dots_remaining'].set_value(state.fluents['dots_remaining'].value - 1)
 
 # Add actions to the environment
 actions = [
-    GologAction('move', move_precondition, move_effect, ['location']),
-    GologAction('eat_dot', eat_dot_precondition, eat_dot_effect, ['dot']),
-    #GologAction('eat_capsule', eat_capsule_precondition, eat_capsule_effect, ['capsule']),
-    #GologAction('eat_ghost', eat_ghost_precondition, eat_ghost_effect, ['location']),
+    GologAction('move_direction', move_direction_precondition, move_direction_effect, ['direction']),
+    GologAction('eat_dot', eat_dot_precondition, eat_dot_effect, ['location']),
 ]
 
 # Define goal
 def pacman_goal(state):
-        return all(not state.fluents[f'dot_present({d})'].value for d in initial_state.symbols['dot'])
+    return all(not state.fluents[f'at(dot,{loc})'].value for loc in state.symbols['location'])
 
 # Define reward function
 def pacman_reward(state):
-    # If the goal is achieved, give a high reward
+    reward = -1  # Base penalty for each step to encourage efficiency
+
+    pacman_loc = state.fluents['at(pacman)'].value
+
+    # Check if all dots are eaten (goal)
     if pacman_goal(state):
-        return 100
-    
-    reward = -1  # Default reward for each step to encourage efficiency
+        return 100  # Large reward for achieving the goal
 
-    pacman_loc = state.fluents['loc(pacman)'].value
+    # Reward for eating a dot the first time
+    for loc in state.symbols['location']:
+        if state.fluents[f'dot_eaten({loc})'].value and pacman_loc == loc and not state.fluents[f'at(dot,{loc})'].value:
+            reward += 50  # Increased reward for eating a dot
+            state.fluents[f'dot_eaten({loc})'].set_value(False)  # Reset dot eaten status
 
-    # Reward for eating dots
-    for d in initial_state.symbols['dot']:
-        if state.fluents[f'dot_present({d})'].value and pacman_loc == d:
-            reward += 10
+    # Penalty for encountering a ghost
+    for loc in state.symbols['location']:
+        if state.fluents[f'at(ghost,{loc})'].value and pacman_loc == loc:
+            reward -= 1000  # Large penalty for encountering a ghost
 
-    # reward if pacman is at ghost position
-    for g in initial_state.symbols['ghost']:
-        if state.fluents[f'ghost_present({g})'].value and pacman_loc == g:
-            reward -= 50
-
-    # Reward for eating capsules
-    # for c in initial_state.symbols['capsule']:
-    #     if state.fluents[f'capsule_present({c})'].value and pacman_loc == c:
-    #         reward += 20
-
-    # Reward for eating ghosts
-    # for g in initial_state.symbols['ghost']:
-    #     if state.fluents['pacman_powered_up()'].value and pacman_loc == g and state.fluents[f'ghost_present({g})'].value:
-    #         reward += 50
-
-    # # Small reward for staying powered up
-    # if state.fluents['pacman_powered_up()'].value:
-    #     reward += 5
+    # Encourage movement towards dots by penalizing distance to the nearest dot
+    nearest_dot_distance = state.fluents['nearest_dot_distance'].value
+    reward -= nearest_dot_distance  # Penalize for distance to nearest dot
 
     return reward
 
-env = gym.make('Golog-v0', initial_state=initial_state, goal_function=pacman_goal, reward_function=pacman_reward, actions=actions)
+def terminated(state):
+    return pacman_goal(state) or any(state.fluents[f'at(ghost,{loc})'].value and state.fluents['at(pacman)'].value == loc for loc in state.symbols['location'])
+
+env = gym.make('Golog-v0', initial_state=initial_state, goal_function=pacman_goal, reward_function=pacman_reward, actions=actions, terminal_condition=terminated, time_constraint=30)
+
 
 def render():
     pygame.init()
@@ -126,7 +121,6 @@ def render():
     WHITE = (255, 255, 255)
     YELLOW = (255, 255, 0)
     BLUE = (0, 0, 255)
-    GREEN = (0, 255, 0)
     RED = (255, 0, 0)
 
     # Grid dimensions
@@ -147,34 +141,25 @@ def render():
                             grid_size])
 
     # Draw dots
-    for dot in initial_state.symbols['dot']:
-        if env.state.fluents[f'dot_present({dot})'].value:
+    for loc in initial_state.symbols['location']:
+        if env.state.fluents[f'at(dot,{loc})'].value:
             pygame.draw.circle(screen,
                             BLUE,
-                            [(margin + grid_size) * dot[0] + margin + grid_size // 2,
-                                (margin + grid_size) * dot[1] + margin + grid_size // 2],
+                            [(margin + grid_size) * loc[0] + margin + grid_size // 2,
+                                (margin + grid_size) * loc[1] + margin + grid_size // 2],
                             10)
 
-    # # Draw capsules
-    # for capsule in initial_state.symbols['capsule']:
-    #     if env.state.fluents[f'capsule_present({capsule})'].value:
-    #         pygame.draw.circle(screen,
-    #                         GREEN,
-    #                         [(margin + grid_size) * capsule[0] + margin + grid_size // 2,
-    #                             (margin + grid_size) * capsule[1] + margin + grid_size // 2],
-    #                         15)
-
     # Draw ghosts
-    for ghost in initial_state.symbols['ghost']:
-        if env.state.fluents[f'ghost_present({ghost})'].value:
+    for loc in initial_state.symbols['location']:
+        if env.state.fluents[f'at(ghost,{loc})'].value:
             pygame.draw.circle(screen,
                             RED,
-                            [(margin + grid_size) * ghost[0] + margin + grid_size // 2,
-                                (margin + grid_size) * ghost[1] + margin + grid_size // 2],
+                            [(margin + grid_size) * loc[0] + margin + grid_size // 2,
+                                (margin + grid_size) * loc[1] + margin + grid_size // 2],
                             20)
 
     # Draw Pac-Man
-    pacman_loc = env.state.fluents['loc(pacman)'].value
+    pacman_loc = env.state.fluents['at(pacman)'].value
     pygame.draw.circle(screen,
                     YELLOW,
                     [(margin + grid_size) * pacman_loc[0] + margin + grid_size // 2,
