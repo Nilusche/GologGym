@@ -5,7 +5,7 @@ from itertools import product
 import numpy as np
 
 class GologEnv(gym.Env):
-    def __init__(self, initial_state, goal_function, actions, reward_function=None, terminal_condition=None, time_constraint=100):
+    def __init__(self, initial_state, goal_function, actions, reward_function=None, terminal_condition=None, time_constraint=np.inf):
         super(GologEnv, self).__init__()
         self.initial_state = initial_state
         self.state = copy.deepcopy(initial_state)
@@ -25,7 +25,7 @@ class GologEnv(gym.Env):
                 self.action_arg_combinations.append((action_index, args))
         
         self.action_space = spaces.Discrete(len(self.action_arg_combinations))
-        self.observation_space = spaces.Box(low=0, high=1, shape=(len(self.get_observation()),), dtype=np.int32)
+        self.observation_space = spaces.Box(low=0, high=1, shape=(self.calculate_observation_space_size(),), dtype=np.int32)
         self.done = False
         self.reset()
 
@@ -46,33 +46,34 @@ class GologEnv(gym.Env):
 
     def _encode_fluent_value(self, fluent, value):
         # Convert fluent and value to a numerical representation for all fluents
-        encoded = []
-        for domain in self.state.symbols.keys():
-            if value in self.state.symbols[domain]:
-                idx = self.state.symbols[domain].index(value)
-                encoded = [0] * len(self.state.symbols[domain])
-                encoded[idx] = 1
-        
+        domain = self.state.fluents[fluent].domain
+        encoded = [0] * len(domain)
+        if value in domain:
+            idx = domain.index(value)
+            encoded[idx] = 1
         return encoded
+    
+    def calculate_observation_space_size(self):
+        size = 0
+        for fluent in self.state.fluents:
+            domain_size = len(self.state.fluents[fluent].domain)
+            size += domain_size
+        return size
 
     def step(self, action):
         action_index, args = self.action_arg_combinations[action]
         action = self.state.actions[action_index]
         terminal = False
-        truncated = False
-        reward = -1
+        reward = -100
         self.time += 1
         if action.precondition(self.state, *args):
             action.effect(self.state, *args)
             reward = self.reward_function(self.state)
-            self.done = self.goal_function(self.state)     
-        if self.done:
+            self.done = self.goal_function(self.state)    
+        else:
             terminal = True
             self.done = True
-        if self.time >= self.time_constraint:
-            terminal = True
-            self.done = True
-        if self.terminal_condition(self.state):
+        if self.done or self.time >= self.time_constraint or self.terminal_condition(self.state):
             terminal = True
             self.done = True
 
