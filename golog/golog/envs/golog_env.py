@@ -5,7 +5,7 @@ from itertools import product
 import numpy as np
 
 class GologEnv(gym.Env):
-    def __init__(self, initial_state, goal_function, actions, reward_function=None):
+    def __init__(self, initial_state, goal_function, actions, reward_function=None, terminal_condition=None, time_constraint=100):
         super(GologEnv, self).__init__()
         self.initial_state = initial_state
         self.state = copy.deepcopy(initial_state)
@@ -13,8 +13,9 @@ class GologEnv(gym.Env):
         self.reward_function = reward_function if reward_function else self.default_reward_function
         self.actions = actions
         self.state.actions = actions  # Ensure actions are accessible via state
-        self.time_constraint = 100  # Default time constraint
+        self.time_constraint = time_constraint  # Default time constraint
         self.time = 0
+        self.terminal_condition = terminal_condition if terminal_condition else lambda state: False
         
         # Generate all valid action-argument combinations
         self.action_arg_combinations = []
@@ -32,6 +33,7 @@ class GologEnv(gym.Env):
         self.done = False
         self.state = copy.deepcopy(self.initial_state)
         self.state.actions = self.actions  # Ensure actions are accessible via state
+        self.time = 0
         #create a numeric representation of the initial state
         return self.get_observation(), {}
     
@@ -66,9 +68,13 @@ class GologEnv(gym.Env):
             self.done = self.goal_function(self.state)     
         if self.done:
             terminal = True
+            self.done = True
         if self.time >= self.time_constraint:
             terminal = True
-
+            self.done = True
+        if self.terminal_condition(self.state):
+            terminal = True
+            self.done = True
 
         return self.get_observation(), reward, terminal, self.done, {}
 
