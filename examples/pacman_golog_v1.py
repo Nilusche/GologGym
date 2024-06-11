@@ -115,7 +115,7 @@ def pacman_reward(state):
 
     # Check if all dots are eaten (goal)
     if pacman_goal(state):
-        return 100  # Large reward for achieving the goal
+        return 100000  # Large reward for achieving the goal
 
     # Reward for eating a dot the first time
     for loc in state.symbols['location']:
@@ -148,7 +148,7 @@ def pacman_reward(state):
 def terminated(state):
     return pacman_goal(state) or any(state.fluents[f'at(ghost,{loc})'].value and state.fluents['at(pacman)'].value == loc for loc in state.symbols['location'])
 
-env = gym.make('Golog-v1', initial_state=initial_state, goal_function=pacman_goal, reward_function=pacman_reward, actions=actions, terminal_condition=terminated, time_constraint=100)
+env = gym.make('Golog-v1', initial_state=initial_state, goal_function=pacman_goal, reward_function=pacman_reward, actions=actions, terminal_condition=terminated, time_constraint=50)
 
 def render():
     pygame.init()

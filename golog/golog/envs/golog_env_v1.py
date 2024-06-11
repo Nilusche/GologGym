@@ -140,6 +140,10 @@ class GologAction:
         self.arg_domains = arg_domains
 
     def generate_valid_args(self, state):
-        domains = [state.symbols[domain] for domain in self.arg_domains]
-        return list(product(*domains))
+        try:
+            domains = [state.symbols[domain] for domain in self.arg_domains]
+            return list(product(*domains))
+        except KeyError as e:
+            print(f"Key error: {e}")
+            return []
 

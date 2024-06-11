@@ -62,15 +62,14 @@ class GologEnv(gym.Env):
         action_index, args = self.action_arg_combinations[action]
         action = self.state.actions[action_index]
         terminal = False
-        reward = -100
+        reward = -1
         self.time += 1
         if action.precondition(self.state, *args):
             action.effect(self.state, *args)
             reward = self.reward_function(self.state)
             self.done = self.goal_function(self.state)    
         else:
-            terminal = True
-            self.done = True
+            reward = -100
         if self.done or self.time >= self.time_constraint or self.terminal_condition(self.state):
             terminal = True
             self.done = True
@@ -142,6 +141,10 @@ class GologAction:
         self.arg_domains = arg_domains
 
     def generate_valid_args(self, state):
-        domains = [state.symbols[domain] for domain in self.arg_domains]
-        return list(product(*domains))
+        try:
+            domains = [state.symbols[domain] for domain in self.arg_domains]
+            return list(product(*domains))
+        except KeyError as e:
+            print(f"Key error: {e}")
+            return []
 
