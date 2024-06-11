@@ -4,27 +4,26 @@ import copy
 from itertools import product
 import numpy as np
 
-class GologEnv(gym.Env):
+class GologEnv_v1(gym.Env):
     def __init__(self, initial_state, goal_function, actions, reward_function=None, terminal_condition=None, time_constraint=np.inf):
-        super(GologEnv, self).__init__()
+        super(GologEnv_v1, self).__init__()
         self.initial_state = initial_state
         self.state = copy.deepcopy(initial_state)
         self.goal_function = goal_function
         self.reward_function = reward_function if reward_function else self.default_reward_function
         self.actions = actions
-        self.state.actions = actions  # Ensure actions are accessible via state
-        self.time_constraint = time_constraint  # Default time constraint
+        self.state.actions = actions
+        self.time_constraint = time_constraint
         self.time = 0
         self.terminal_condition = terminal_condition if terminal_condition else lambda state: False
         
-        # Generate all valid action-argument combinations
-        self.action_arg_combinations = []
-        for action_index, action in enumerate(actions):
-            valid_args = action.generate_valid_args(self.state)
-            for args in valid_args:
-                self.action_arg_combinations.append((action_index, args))
+        # Define action space
+        action_spaces = [spaces.Discrete(len(actions))]
+        for action in actions:
+            for arg_domain in action.arg_domains:
+                action_spaces.append(spaces.Discrete(len(initial_state.symbols[arg_domain])))
+        self.action_space = spaces.MultiDiscrete([space.n for space in action_spaces])
         
-        self.action_space = spaces.Discrete(len(self.action_arg_combinations))
         self.observation_space = spaces.Box(low=0, high=1, shape=(self.calculate_observation_space_size(),), dtype=np.int32)
         self.done = False
         self.reset()
@@ -59,18 +58,17 @@ class GologEnv(gym.Env):
         return size
 
     def step(self, action):
-        action_index, args = self.action_arg_combinations[action]
-        action = self.state.actions[action_index]
+        action_index = action[0]
+        args = action[1:]
+        action_obj = self.state.actions[action_index]
+        arg_values = [self.state.symbols[domain][arg] for domain, arg in zip(action_obj.arg_domains, args)]
         terminal = False
-        reward = -100
+        reward = -1
         self.time += 1
-        if action.precondition(self.state, *args):
-            action.effect(self.state, *args)
+        if action_obj.precondition(self.state, *arg_values):
+            action_obj.effect(self.state, *arg_values)
             reward = self.reward_function(self.state)
-            self.done = self.goal_function(self.state)    
-        else:
-            terminal = True
-            self.done = True
+            self.done = self.goal_function(self.state)
         if self.done or self.time >= self.time_constraint or self.terminal_condition(self.state):
             terminal = True
             self.done = True
