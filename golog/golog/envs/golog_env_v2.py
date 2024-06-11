@@ -4,9 +4,9 @@ import copy
 from itertools import product
 import numpy as np
 
-class GologEnv_v1(gym.Env):
+class GologEnv_v2(gym.Env):
     def __init__(self, initial_state, goal_function, actions, reward_function=None, terminal_condition=None, time_constraint=np.inf):
-        super(GologEnv_v1, self).__init__()
+        super(GologEnv_v2, self).__init__()
         self.initial_state = initial_state
         self.state = copy.deepcopy(initial_state)
         self.goal_function = goal_function
@@ -24,7 +24,10 @@ class GologEnv_v1(gym.Env):
                 action_spaces.append(spaces.Discrete(len(initial_state.symbols[arg_domain])))
         self.action_space = spaces.MultiDiscrete([space.n for space in action_spaces])
         
-        self.observation_space = spaces.Box(low=0, high=1, shape=(self.calculate_observation_space_size(),), dtype=np.int32)
+        # Calculate the maximum domain size for fluents
+        self.max_domain_size = max(len(domain) for domain in initial_state.symbols.values())
+        
+        self.observation_space = spaces.Box(low=0, high=1, shape=(self.calculate_observation_space_size(), self.max_domain_size), dtype=np.int32)
         self.done = False
         self.reset()
 
@@ -36,26 +39,25 @@ class GologEnv_v1(gym.Env):
         return self.get_observation(), {}
 
     def get_observation(self):
-        observation = []
+        observation = np.zeros((self.calculate_observation_space_size(), self.max_domain_size), dtype=np.int32)
+        index = 0
         for fluent in self.state.fluents:
             value = self.state.fluents[fluent].value
-            observation.extend(self._encode_fluent_value(fluent, value))
-        return np.array(observation, dtype=np.int32)
+            encoded = self._encode_fluent_value(fluent, value)
+            observation[index, :len(encoded)] = encoded
+            index += 1
+        return observation
 
     def _encode_fluent_value(self, fluent, value):
         domain = self.state.fluents[fluent].domain
-        encoded = [0] * len(domain)
+        encoded = np.zeros(self.max_domain_size, dtype=np.int32)
         if value in domain:
             idx = domain.index(value)
             encoded[idx] = 1
         return encoded
     
     def calculate_observation_space_size(self):
-        size = 0
-        for fluent in self.state.fluents:
-            domain_size = len(self.state.fluents[fluent].domain)
-            size += domain_size
-        return size
+        return len(self.state.fluents)
 
     def step(self, action):
         action_index = action[0]
@@ -146,4 +148,3 @@ class GologAction:
         except KeyError as e:
             print(f"Key error: {e}")
             return []
-

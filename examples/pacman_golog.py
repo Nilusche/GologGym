@@ -148,7 +148,9 @@ def pacman_reward(state):
 def terminated(state):
     return pacman_goal(state) or any(state.fluents[f'at(ghost,{loc})'].value and state.fluents['at(pacman)'].value == loc for loc in state.symbols['location'])
 
-env = gym.make('Golog-v0', initial_state=initial_state, goal_function=pacman_goal, reward_function=pacman_reward, actions=actions, terminal_condition=terminated, time_constraint=100)
+
+#env = gym.make('Golog-v0', initial_state=initial_state, goal_function=pacman_goal, reward_function=pacman_reward, actions=actions, terminal_condition=terminated, time_constraint=100)
+env = gym.make('Golog-v2', initial_state=initial_state, goal_function=pacman_goal, reward_function=pacman_reward, actions=actions, terminal_condition=terminated, time_constraint=50)
 
 def render():
     pygame.init()

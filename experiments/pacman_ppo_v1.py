@@ -1,7 +1,7 @@
 from stable_baselines3 import PPO
 from stable_baselines3.common.env_checker import check_env
 import golog
-from examples.pacman_golog_v1 import env
+from examples.pacman_golog import env
 from itertools import product
 
 # Check if the environment follows the OpenAI Gym interface

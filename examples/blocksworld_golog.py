@@ -38,4 +38,8 @@ initial_state.add_action(stack_action)
 
 actions = [stack_action]
 
-env = gym.make('Golog-v0', initial_state=initial_state, goal_function=blocksworld_goal, actions=actions, reward_function=reward_function)
+#env = gym.make('Golog-v0', initial_state=initial_state, goal_function=blocksworld_goal, actions=actions, reward_function=reward_function)
+#env = gym.make('Golog-v1', initial_state=initial_state, goal_function=blocksworld_goal, actions=actions, reward_function=reward_function)
+env = gym.make('Golog-v2', initial_state=initial_state, goal_function=blocksworld_goal, actions=actions, reward_function=reward_function)
+
+
