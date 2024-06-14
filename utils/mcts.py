@@ -1,7 +1,7 @@
-# mcts.py
 from math import sqrt, log
 from copy import deepcopy
 import random
+from itertools import product
 
 class GologNode:
     def __init__(self, game, parent, done, observation, action_index):
@@ -20,7 +20,6 @@ class GologNode:
         top_node = self
         if top_node.parent:
             top_node = top_node.parent
-        
         return self.T / self.N + c * sqrt(log(top_node.N) / self.N)
 
     def detach_parent(self):
@@ -31,14 +30,25 @@ class GologNode:
         if self.done:
             return
 
-        actions = list(range(self.game.action_space.n))
-        games = [deepcopy(self.game) for _ in actions]
+        legal_actions = self.get_legal_actions()
+        games = [deepcopy(self.game) for _ in legal_actions]
         
         child = {}
-        for action, game in zip(actions, games):
+        for action, game in zip(legal_actions, games):
             observation, reward, _, done, _ = game.step(action)
-            child[action] = GologNode(game, self, done, observation, action)
+            child[tuple(action)] = GologNode(game, self, done, observation, action)
         self.child = child
+
+    def get_legal_actions(self):
+        legal_actions = []
+        for action_index in range(self.game.action_space.nvec[0]):
+            for args_combination in product(*(range(n) for n in self.game.action_space.nvec[1:])):
+                action_combination = [action_index] + list(args_combination)
+                action_obj = self.game.state.actions[action_index]
+                arg_values = [self.game.state.symbols[domain][arg] for domain, arg in zip(action_obj.arg_domains, args_combination)]
+                if action_obj.precondition(self.game.state, *arg_values):
+                    legal_actions.append(action_combination)
+        return legal_actions
 
     def explore(self):
         current = self
@@ -77,7 +87,8 @@ class GologNode:
         rollout_steps = 0
 
         while not done:  # Prevent infinite loops
-            action_index = new_game.action_space.sample()
+            legal_actions = self.get_legal_actions()
+            action_index = random.choice(legal_actions)
             observation, reward, _, done, _ = new_game.step(action_index)
             v += reward
             rollout_steps += 1
@@ -106,8 +117,7 @@ class GologNode:
 
         return max_child, max_child.action_index
 
-
-MCTS_POLICY_EXPLORE = 100  # Number of MCTS iterations
+MCTS_POLICY_EXPLORE = 1000  # Number of MCTS iterations
 
 def Policy_Player_MCTS(mytree):
     for _ in range(MCTS_POLICY_EXPLORE):

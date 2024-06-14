@@ -1,7 +1,7 @@
 import golog
 import time
 import numpy as np
-from golog.envs.golog_env import GologState, GologAction
+from golog.envs.golog_env_v3 import GologState, GologAction
 import gymnasium as gym
 import pygame
 
@@ -115,26 +115,27 @@ def pacman_reward(state):
 
     # Check if all dots are eaten (goal)
     if pacman_goal(state):
-        return 100  # Large reward for achieving the goal
+        return 10000  # Large reward for achieving the goal
 
     # Reward for eating a dot the first time
     for loc in state.symbols['location']:
         if state.fluents[f'dot_eaten({loc})'].value and pacman_loc == loc and not state.fluents[f'at(dot,{loc})'].value:
-            reward += 50  # Increased reward for eating a dot
+            reward += 10  # Increased reward for eating a dot
             state.fluents[f'dot_eaten({loc})'].set_value(False)  # Reset dot eaten status
 
     # Reward for eating a capsule the first time
     for loc in state.symbols['location']:
         if state.fluents[f'capsule_eaten({loc})'].value and pacman_loc == loc and not state.fluents[f'at(capsule,{loc})'].value:
-            reward += 100  # Reward for eating a capsule
+            reward += 50  # Reward for eating a capsule
             state.fluents[f'capsule_eaten({loc})'].set_value(False)  # Reset capsule eaten status
 
     # Reward for eating a ghost the first time
     if state.fluents['powered_up'].value:
         for loc in state.symbols['location']:
             if state.fluents[f'ghost_eaten({loc})'].value and pacman_loc == loc and not state.fluents[f'at(ghost,{loc})'].value:
-                reward += 200  # Large reward for eating a ghost
+                reward += 300  # Large reward for eating a ghost
                 state.fluents[f'ghost_eaten({loc})'].set_value(False)  # Reset ghost eaten status
+
 
     # Penalty for encountering a ghost while not powered up
     if not state.fluents['powered_up'].value:

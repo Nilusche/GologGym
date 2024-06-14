@@ -2,7 +2,7 @@ import gymnasium as gym
 from sb3_contrib import MaskablePPO
 from sb3_contrib.common.maskable.utils import get_action_masks
 from sb3_contrib.common.wrappers import ActionMasker
-from examples.pacman_golog import env
+from examples.pacman_golog_reduced import env
 import numpy as np
 # Define the mask function
 def mask_fn(env: gym.Env) -> np.ndarray:
@@ -15,7 +15,7 @@ env = ActionMasker(env, mask_fn)
 model = MaskablePPO('MlpPolicy', env, verbose=1)
 
 # Train the model
-model.learn(total_timesteps=1000000, progress_bar=True)
+model.learn(total_timesteps=100000, progress_bar=True)
 
 # Save the model
 model.save("maskable_ppo_golog_pacman")

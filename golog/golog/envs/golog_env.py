@@ -29,7 +29,7 @@ class GologEnv(gym.Env):
         self.done = False
         self.reset()
 
-    def reset(self, seed=None):
+    def reset(self, seed=None, options=None):
         self.done = False
         self.state = copy.deepcopy(self.initial_state)
         self.state.actions = self.actions

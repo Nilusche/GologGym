@@ -26,9 +26,9 @@ class GologEnv_v3(gym.Env):
         self.action_space = spaces.MultiDiscrete([space.n for space in action_spaces])
         
         # Calculate the maximum domain size for fluents
-        self.max_domain_size = max(len(domain) for domain in initial_state.symbols.values())
+        self.fluent_domain_sizes = {fluent: len(domain) for fluent, domain in initial_state.fluents.items()}
         
-        self.observation_space = spaces.Box(low=0, high=1, shape=(self.calculate_observation_space_size(), self.max_domain_size), dtype=np.int32)
+        self.observation_space = spaces.Box(low=0, high=1, shape=(self.calculate_observation_space_size(), max(self.fluent_domain_sizes.values())), dtype=np.int32)
         self.done = False
         self.reset()
 
@@ -40,7 +40,8 @@ class GologEnv_v3(gym.Env):
         return self.get_observation(), {}
 
     def get_observation(self):
-        observation = np.zeros((self.calculate_observation_space_size(), self.max_domain_size), dtype=np.int32)
+        max_domain_size = max(self.fluent_domain_sizes.values())
+        observation = np.zeros((self.calculate_observation_space_size(), max_domain_size), dtype=np.int32)
         index = 0
         for fluent in self.state.fluents:
             value = self.state.fluents[fluent].value
@@ -51,10 +52,12 @@ class GologEnv_v3(gym.Env):
 
     def _encode_fluent_value(self, fluent, value):
         domain = self.state.fluents[fluent].domain
-        encoded = np.zeros(self.max_domain_size, dtype=np.int32)
-        if value in domain:
+        encoded = np.zeros(self.fluent_domain_sizes[fluent], dtype=np.int32)
+        try:
             idx = domain.index(value)
             encoded[idx] = 1
+        except ValueError:
+            pass  # If the value is not in the domain, leave the encoding as zeros
         return encoded
     
     def calculate_observation_space_size(self):
@@ -123,6 +126,9 @@ class GologFluent:
     def __repr__(self):
         return str(self.value)
 
+    def __len__(self):
+        return len(self.domain)
+    
 class GologState:
     def __init__(self):
         self.symbols = {}

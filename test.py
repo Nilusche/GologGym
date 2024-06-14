@@ -1,53 +1,38 @@
-from stable_baselines3 import PPO
-from stable_baselines3.common.env_checker import check_env
-import golog
+import gymnasium as gym
 from examples.pacman_golog import env
+from utils.mcts import GologNode, Policy_Player_MCTS
 
-# Check if the environment follows the OpenAI Gym interface
-#check_env(env, warn=True)
+def main():
+    # Initialize the environment
+    done = False
+    # Reset the environment to get the initial observation
+    observation, _ = env.reset()
 
-def filter_legal_actions(env, action_space):
-    legal_actions = []
-    for action_index in range(action_space.n):
-        action, args = env.action_arg_combinations[action_index]
-        if env.state.actions[action].precondition(env.state, *args):
-            legal_actions.append(action_index)
-    return legal_actions
+    # Initialize the root node of the MCTS
+    root = GologNode(env, parent=None, done=False, observation=observation, action_index=None)
 
-def custom_step(env, model, obs):
-    legal_actions = filter_legal_actions(env, env.action_space)
-    action, _ = model.predict(obs)
-    while action not in legal_actions:
-        action, _ = model.predict(obs)
-    return action
+    while not done:
+       
+        # Run MCTS to get the best action
+        root, best_action = Policy_Player_MCTS(root)
 
+        # Apply the best action to the environment
+        observation, reward, _, done, _ = env.step(best_action)
 
-#Create the PPO agent
-model = PPO('MlpPolicy', env, ent_coef=0.01, learning_rate=0.001, verbose=1)
+        # Render the environment to visualize the result
+        env.render()
 
-# # Train the agent
-model.learn(total_timesteps=300000, progress_bar=True)
+        if done:
+            print(f"Selected action: {best_action}")
+            print(f"Reward: {reward}")
+            print(f"Done: {done}")
 
-# Save the model
-model.save("ppo_pacman")
+            break
 
-# # Load the model for further use
-model = PPO.load("ppo_pacman")
+        print(f"Selected action: {best_action}")
+        print(f"Reward: {reward}")
+        print(f"Done: {done}")
 
-# # Test the trained agent
-obs, info = env.reset()
-
-
-obs, _= env.reset()
-for i in range(1000):
-    action, _states = model.predict(obs, deterministic=True)
-
-    obs, rewards, _, done, info = env.step(action)
-    print(f"Step {i}: Executing action: {action}")
-    print(f"Reward: {rewards}")
-    env.render()
-    if done:
-        print("Game over!")
-        print(f"Total rewards: {rewards}")
-        obs = env.reset()
-        break
+    
+if __name__ == "__main__":
+    main()

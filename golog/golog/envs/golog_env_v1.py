@@ -28,7 +28,7 @@ class GologEnv_v1(gym.Env):
         self.done = False
         self.reset()
 
-    def reset(self, seed=None):
+    def reset(self, seed=None, options=None):
         self.done = False
         self.state = copy.deepcopy(self.initial_state)
         self.state.actions = self.actions
@@ -103,6 +103,9 @@ class GologFluent:
 
     def __repr__(self):
         return str(self.value)
+    
+    def __len__(self):
+        return len(self.domain)
 
 class GologState:
     def __init__(self):
