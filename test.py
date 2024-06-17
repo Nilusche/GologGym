@@ -1,5 +1,5 @@
 import gymnasium as gym
-from examples.pacman_golog import env
+from examples.blocksworld_golog import env
 from utils.mcts import GologNode, Policy_Player_MCTS
 
 def main():
@@ -26,7 +26,7 @@ def main():
             print(f"Selected action: {best_action}")
             print(f"Reward: {reward}")
             print(f"Done: {done}")
-
+            env.render()
             break
 
         print(f"Selected action: {best_action}")

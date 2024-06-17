@@ -1,31 +1,38 @@
-from copy import deepcopy
-import golog
+import gymnasium as gym
 from examples.blocksworld_golog import env
 from utils.mcts import GologNode, Policy_Player_MCTS
 
 def main():
-    reward_e = 0 
-    observation = env.reset()
+    # Initialize the environment
     done = False
-    new_game = deepcopy(env)
-    mytree = GologNode(new_game, None, False, observation, 0)
-    step_counter = 0
+    # Reset the environment to get the initial observation
+    observation, _ = env.reset()
+
+    # Initialize the root node of the MCTS
+    root = GologNode(env, parent=None, done=False, observation=observation, action_index=None)
 
     while not done:
-        print(f"Step {step_counter}: Starting MCTS")
-        mytree, action_index = Policy_Player_MCTS(mytree)
-        observation, reward, _, done, _ = env.step(action_index)
-        reward_e += reward
-        action = env.action_arg_combinations[action_index]
-        print(f"Step {step_counter}: Executing action: {env.state.actions[action[0]].name} with args {action[1:]}")
+       
+        # Run MCTS to get the best action
+        root, best_action = Policy_Player_MCTS(root)
+
+        # Apply the best action to the environment
+        observation, reward, _, done, _ = env.step(best_action)
+
+        # Render the environment to visualize the result
         env.render()
 
         if done:
-            print('reward_e ' + str(reward_e))
-            print("Game over!")
+            print(f"Selected action: {best_action}")
+            print(f"Reward: {reward}")
+            print(f"Done: {done}")
+            env.render()
             break
-        
-        step_counter += 1
 
+        print(f"Selected action: {best_action}")
+        print(f"Reward: {reward}")
+        print(f"Done: {done}")
+
+    
 if __name__ == "__main__":
     main()

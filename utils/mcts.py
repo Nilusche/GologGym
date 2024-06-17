@@ -117,7 +117,7 @@ class GologNode:
 
         return max_child, max_child.action_index
 
-MCTS_POLICY_EXPLORE = 1000  # Number of MCTS iterations
+MCTS_POLICY_EXPLORE = 100 # Number of MCTS iterations
 
 def Policy_Player_MCTS(mytree):
     for _ in range(MCTS_POLICY_EXPLORE):

@@ -1,5 +1,5 @@
 import golog
-from golog.envs.golog_env import GologState, GologAction
+from golog.envs.golog_env_v3 import GologState, GologAction
 import gymnasium as gym
 
 def stack_precondition(state, x, y):
@@ -45,7 +45,7 @@ actions = [stack_action]
 #env = gym.make('Golog-v0', initial_state=initial_state, goal_function=blocksworld_goal, actions=actions, reward_function=reward_function)
 #env = gym.make('Golog-v1', initial_state=initial_state, goal_function=blocksworld_goal, actions=actions, reward_function=reward_function)
 #env = gym.make('Golog-v2', initial_state=initial_state, goal_function=blocksworld_goal, actions=actions, reward_function=reward_function)
-env = gym.make('Golog-v3', initial_state=initial_state, goal_function=blocksworld_goal, actions=actions, reward_function=reward_function, time_constraint=5)
+env = gym.make('Golog-v3', initial_state=initial_state, goal_function=blocksworld_goal, actions=actions, reward_function=reward_function, time_constraint=10)
 
 
 
