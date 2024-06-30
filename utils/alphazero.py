@@ -8,18 +8,21 @@ from itertools import product
 import random
 from math import sqrt, log
 import matplotlib.pyplot as plt
-from datetime import datetime
 from examples.blocksworld_golog import env
+import tensorflow as tf
+import datetime
 
-# Define observation and action space sizes
+
 observation_space_size = env.observation_space.shape[0]
 action_space_size = env.action_space.n
-c = 1.4
+c = 1.0
+
 
 # Neural Network definitions
 class PolicyV(keras.Model):
     def __init__(self, observation_space_size):
         super(PolicyV, self).__init__()
+        self.lstm = keras.layers.LSTM(64, return_sequences=True)
         self.dense1 = keras.layers.Dense(64, activation='relu')
         self.dense2 = keras.layers.Dense(64, activation='relu')
         self.v_out = keras.layers.Dense(1)
@@ -160,16 +163,11 @@ def save_models(policy_v, policy_p, v_model_path, p_model_path):
     policy_v.save(v_model_path)
     policy_p.save(p_model_path)
 
-# Example usage:
-# save_models(policy_v, policy_p, 'policy_v_model.h5', 'policy_p_model.h5')
-
 def load_models(v_model_path, p_model_path):
     loaded_policy_v = tf.keras.models.load_model(v_model_path)
     loaded_policy_p = tf.keras.models.load_model(p_model_path)
     return loaded_policy_v, loaded_policy_p
 
-# Example usage:
-# policy_v, policy_p = load_models('policy_v_model.h5', 'policy_p_model.h5')
 
 # Function to let the network play the game
 def play_game_with_network(env, policy_v, policy_p):
@@ -187,31 +185,57 @@ def play_game_with_network(env, policy_v, policy_p):
 
     return total_reward
 
-# Example usage after training
-# for _ in range(10):  # Play 10 games with the trained network
-#     reward = play_game_with_network(env, policy_v, policy_p)
-#     print(f"Game reward: {reward}")
+class EarlyStopping:
+    def __init__(self, patience=10, min_delta=0):
+        self.patience = patience
+        self.min_delta = min_delta
+        self.best_score = None
+        self.epochs_no_improve = 0
+        self.early_stop = False
+
+    def __call__(self, current_score):
+        if self.best_score is None:
+            self.best_score = current_score
+        elif current_score < self.best_score + self.min_delta:
+            self.epochs_no_improve += 1
+            if self.epochs_no_improve >= self.patience:
+                self.early_stop = True
+        else:
+            self.best_score = current_score
+            self.epochs_no_improve = 0
+
+early_stopping = EarlyStopping(patience=20, min_delta=0.01)
 
 BUFFER_SIZE = 1000
 BATCH_SIZE = 128
 UPDATE_EVERY = 1
-episodes = 500  # Increased number of episodes for better learning
+episodes = 250
 rewards = []
 moving_average = []
 v_losses = []
 p_losses = []
 
-MAX_REWARD = 500
+MAX_REWARD = 115
 
 replay_buffer = ReplayBuffer(BUFFER_SIZE, BATCH_SIZE)
 
+learning_rate_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
+    initial_learning_rate=1e-3,
+    decay_steps=10000,
+    decay_rate=0.96,
+    staircase=True
+)
+optimizer_v = keras.optimizers.Adam(learning_rate=learning_rate_schedule)
+optimizer_p = keras.optimizers.Adam(learning_rate=learning_rate_schedule)
+
 policy_v = PolicyV(observation_space_size)
-policy_v.compile(optimizer=keras.optimizers.Adam(), loss=tf.keras.losses.MeanSquaredError(), metrics=[tf.keras.metrics.MeanSquaredError()])
+policy_v.compile(optimizer=optimizer_v, loss=tf.keras.losses.MeanSquaredError(), metrics=[tf.keras.metrics.MeanSquaredError()])
 
 policy_p = PolicyP(action_space_size)
-policy_p.compile(optimizer=keras.optimizers.Adam(), loss=tf.keras.losses.CategoricalCrossentropy(), metrics=[tf.keras.metrics.CategoricalCrossentropy()])
+policy_p.compile(optimizer=optimizer_p, loss=tf.keras.losses.CategoricalCrossentropy(), metrics=[tf.keras.metrics.CategoricalCrossentropy()])
 
-log_dir = "logs/fit/" + datetime.now().strftime("%Y%m%d-%H%M%S")
+
+log_dir = "logs/alpha/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
 summary_writer = tf.summary.create_file_writer(log_dir)
 
 for e in range(episodes):
@@ -265,8 +289,18 @@ for e in range(episodes):
 
         summary_writer.flush()
 
-        print(f'Episode {e + 1}/{episodes}, Reward: {reward_e}, Moving Average Reward: {moving_average[-1]}, Value Loss: {loss_v[0]}, Policy Loss: {loss_p[0]}')
+        # # Plotting (optional, can be removed for cleaner logging)
+        # plt.plot(rewards)
+        # plt.plot(moving_average)
+        # plt.show()
+        # plt.plot(v_losses)
+        # plt.show()
+        # plt.plot(p_losses)
+        # plt.show()
+        print('moving average:', np.mean(rewards[-20:]))
+        
 
-# for _ in range(10):  # Play 10 games with the trained network
-#     reward = play_game_with_network(env, policy_v, policy_p)
-#     print(f"Game reward: {reward}")
+    early_stopping(moving_average[-1])
+    if early_stopping.early_stop:
+        print(f'Early stopping at episode {e + 1}')
+        break
