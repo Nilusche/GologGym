@@ -94,7 +94,7 @@ def reward_function(state):
 # Create the environment
 num_dots = 5  # Example number of dots
 initial_state, actions = initialize_pacman_state(num_dots)
-env = gym.make('Golog-v3', initial_state=initial_state, goal_function=pacman_goal, actions=actions, reward_function=reward_function, time_constraint=50)
+env = gym.make('Golog-v4', initial_state=initial_state, goal_function=pacman_goal, actions=actions, reward_function=reward_function, time_constraint=20)
 
 #implement custom render function with pygame
 import pygame 

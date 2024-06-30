@@ -9,16 +9,20 @@ import random
 from math import sqrt, log
 import matplotlib.pyplot as plt
 from examples.blocksworld_golog import env
+import tensorflow as tf
+import datetime
+
 
 observation_space_size = env.observation_space.shape[0]
 action_space_size = env.action_space.n
-c = 1.4
+c = 1.0
 
 
 # Neural Network definitions
 class PolicyV(keras.Model):
     def __init__(self, observation_space_size):
         super(PolicyV, self).__init__()
+        self.lstm = keras.layers.LSTM(64, return_sequences=True)
         self.dense1 = keras.layers.Dense(64, activation='relu')
         self.dense2 = keras.layers.Dense(64, activation='relu')
         self.v_out = keras.layers.Dense(1)
@@ -53,6 +57,11 @@ class Node:
         self.nn_v = 0
         self.nn_p = np.zeros(action_space_size)
 
+    def get_valid_actions(self):
+        action_masks = self.game.action_masks()
+        valid_actions = [i for i, valid in enumerate(action_masks) if valid]
+        return valid_actions
+
     def getUCBscore(self):
         if self.N == 0:
             return float('inf')
@@ -70,15 +79,12 @@ class Node:
     def create_child(self):
         if self.done:
             return
-        actions = list(range(action_space_size))
-        games = [deepcopy(self.game) for _ in actions]
-        child = {}
-        action_index = 0
-        for action, game in zip(actions, games):
+        valid_actions = self.get_valid_actions()
+        self.child = {}
+        for action in valid_actions:
+            game = deepcopy(self.game)
             observation, reward, _, done, _ = game.step(action)
-            child[action] = Node(game, done, self, observation, action_index, action_space_size)
-            action_index += 1
-        self.child = child
+            self.child[action] = Node(game, done, self, observation, action, action_space_size)
 
     def explore(self):
         current = self
@@ -94,7 +100,7 @@ class Node:
         else:
             current.create_child()
             if current.child:
-                current = random.choice(current.child)
+                current = random.choice(list(current.child.values()))
             current.nn_v, current.nn_p = current.rollout()
             current.T = current.T + current.nn_v
         current.N += 1
@@ -148,27 +154,89 @@ def Policy_Player_MCTS(mytree):
     next_tree.detach_parent()
     return next_tree, next_action, obs, p, p_obs
 
+def pad_to_length(arr, length):
+    if len(arr) >= length:
+        return arr
+    return np.pad(arr, (0, length - len(arr)), mode='constant', constant_values=0)
 
+def save_models(policy_v, policy_p, v_model_path, p_model_path):
+    policy_v.save(v_model_path)
+    policy_p.save(p_model_path)
+
+def load_models(v_model_path, p_model_path):
+    loaded_policy_v = tf.keras.models.load_model(v_model_path)
+    loaded_policy_p = tf.keras.models.load_model(p_model_path)
+    return loaded_policy_v, loaded_policy_p
+
+
+# Function to let the network play the game
+def play_game_with_network(env, policy_v, policy_p):
+    game = env
+    observation, _ = game.reset()
+    done = False
+    total_reward = 0
+
+    while not done:
+        obs = np.array([observation])
+        action_probs = policy_p(obs).numpy().flatten()
+        action = np.argmax(action_probs)  # Select the action with the highest probability
+        observation, reward, done, _, _ = game.step(action)
+        total_reward += reward
+
+    return total_reward
+
+class EarlyStopping:
+    def __init__(self, patience=10, min_delta=0):
+        self.patience = patience
+        self.min_delta = min_delta
+        self.best_score = None
+        self.epochs_no_improve = 0
+        self.early_stop = False
+
+    def __call__(self, current_score):
+        if self.best_score is None:
+            self.best_score = current_score
+        elif current_score < self.best_score + self.min_delta:
+            self.epochs_no_improve += 1
+            if self.epochs_no_improve >= self.patience:
+                self.early_stop = True
+        else:
+            self.best_score = current_score
+            self.epochs_no_improve = 0
+
+early_stopping = EarlyStopping(patience=20, min_delta=0.01)
 
 BUFFER_SIZE = 1000
 BATCH_SIZE = 128
 UPDATE_EVERY = 1
 episodes = 250
-1
 rewards = []
 moving_average = []
 v_losses = []
 p_losses = []
 
-MAX_REWARD = 500
+MAX_REWARD = 115
 
 replay_buffer = ReplayBuffer(BUFFER_SIZE, BATCH_SIZE)
 
+learning_rate_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
+    initial_learning_rate=1e-3,
+    decay_steps=10000,
+    decay_rate=0.96,
+    staircase=True
+)
+optimizer_v = keras.optimizers.Adam(learning_rate=learning_rate_schedule)
+optimizer_p = keras.optimizers.Adam(learning_rate=learning_rate_schedule)
+
 policy_v = PolicyV(observation_space_size)
-policy_v.compile(optimizer=keras.optimizers.Adam(), loss=tf.keras.losses.MeanSquaredError(), metrics=[tf.keras.metrics.MeanSquaredError()])
+policy_v.compile(optimizer=optimizer_v, loss=tf.keras.losses.MeanSquaredError(), metrics=[tf.keras.metrics.MeanSquaredError()])
 
 policy_p = PolicyP(action_space_size)
-policy_p.compile(optimizer=keras.optimizers.Adam(), loss=tf.keras.losses.CategoricalCrossentropy(), metrics=[tf.keras.metrics.CategoricalCrossentropy()])
+policy_p.compile(optimizer=optimizer_p, loss=tf.keras.losses.CategoricalCrossentropy(), metrics=[tf.keras.metrics.CategoricalCrossentropy()])
+
+
+log_dir = "logs/alpha/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+summary_writer = tf.summary.create_file_writer(log_dir)
 
 for e in range(episodes):
     reward_e = 0
@@ -209,16 +277,30 @@ for e in range(episodes):
         v_losses.append(loss_v)
 
         inputs = np.array([experience.p_obs for experience in experiences])
-        targets_p = np.array([experience.p for experience in experiences])
+        targets_p = np.array([pad_to_length(experience.p, action_space_size) for experience in experiences])
         loss_p = policy_p.train_on_batch(inputs, targets_p)
         p_losses.append(loss_p)
 
-        # Plotting
-        plt.plot(rewards)
-        plt.plot(moving_average)
-        plt.show()
-        plt.plot(v_losses)
-        plt.show()
-        plt.plot(p_losses)
-        plt.show()
+        with summary_writer.as_default():
+            tf.summary.scalar('reward', reward_e, step=e)
+            tf.summary.scalar('moving_average_reward', moving_average[-1], step=e)
+            tf.summary.scalar('value_loss', loss_v[0], step=e)
+            tf.summary.scalar('policy_loss', loss_p[0], step=e)
+
+        summary_writer.flush()
+
+        # # Plotting (optional, can be removed for cleaner logging)
+        # plt.plot(rewards)
+        # plt.plot(moving_average)
+        # plt.show()
+        # plt.plot(v_losses)
+        # plt.show()
+        # plt.plot(p_losses)
+        # plt.show()
         print('moving average:', np.mean(rewards[-20:]))
+        
+
+    early_stopping(moving_average[-1])
+    if early_stopping.early_stop:
+        print(f'Early stopping at episode {e + 1}')
+        break

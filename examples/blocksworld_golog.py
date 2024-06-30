@@ -20,12 +20,12 @@ def reward_function(state):
     #return partial reward based on the goal
     if blocksworld_goal(state):
         return 100
-    # elif state.fluents['loc(a)'].value == 'table' and state.fluents['loc(b)'].value != 'a' and state.fluents['loc(c)'].value != 'b':
-    #     return 5
-    # elif state.fluents['loc(a)'].value == 'table' and state.fluents['loc(b)'].value == 'a' and state.fluents['loc(c)'].value != 'b':
-    #     return 5
-    # elif state.fluents['loc(a)'].value != 'table' and state.fluents['loc(b)'].value == 'a' and state.fluents['loc(c)'].value == 'b':
-    #     return 5
+    elif state.fluents['loc(a)'].value == 'table' and state.fluents['loc(b)'].value != 'a' and state.fluents['loc(c)'].value != 'b':
+        return 5
+    elif state.fluents['loc(a)'].value == 'table' and state.fluents['loc(b)'].value == 'a' and state.fluents['loc(c)'].value != 'b':
+        return 5
+    elif state.fluents['loc(a)'].value != 'table' and state.fluents['loc(b)'].value == 'a' and state.fluents['loc(c)'].value == 'b':
+        return 5
     else:
         return -1
 
@@ -45,7 +45,7 @@ actions = [stack_action]
 #env = gym.make('Golog-v0', initial_state=initial_state, goal_function=blocksworld_goal, actions=actions, reward_function=reward_function)
 #env = gym.make('Golog-v1', initial_state=initial_state, goal_function=blocksworld_goal, actions=actions, reward_function=reward_function)
 #env = gym.make('Golog-v2', initial_state=initial_state, goal_function=blocksworld_goal, actions=actions, reward_function=reward_function)
-env = gym.make('Golog-v3', initial_state=initial_state, goal_function=blocksworld_goal, actions=actions, reward_function=reward_function, time_constraint=10)
-
+#env = gym.make('Golog-v3', initial_state=initial_state, goal_function=blocksworld_goal, actions=actions, reward_function=reward_function, time_constraint=10)
+env = gym.make('Golog-v4', initial_state=initial_state, goal_function=blocksworld_goal, actions=actions, reward_function=reward_function, time_constraint=10)
 
 
