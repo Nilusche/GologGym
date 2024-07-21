@@ -1,13 +1,13 @@
 import gymnasium as gym
 from stable_baselines3 import A2C
 from stable_baselines3.common.env_checker import check_env
-from examples.blocksworld_golog import env  # Assuming this is the environment you've set up
+from examples.pacman_golog_reduced import env  # Assuming this is the environment you've set up
 
 # Check if the environment follows the Gym API
 check_env(env)
 
 # Create the A2C model
-model = A2C('MlpPolicy', env, verbose=1, tensorboard_log="./logs/Policy/a2c_golog_blocksworld_tensorboard/")
+model = A2C('MlpPolicy', env, verbose=1, tensorboard_log="./logs/Policy/a2c_golog_pacman_tensorboard/")
 
 # Train the model
 model.learn(total_timesteps=50000)
