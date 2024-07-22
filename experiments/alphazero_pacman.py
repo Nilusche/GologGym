@@ -8,7 +8,7 @@ from itertools import product
 import random
 from math import sqrt, log
 import matplotlib.pyplot as plt
-from examples.blocksworld_golog import env
+from examples.pacman_golog_reduced import env
 import tensorflow as tf
 import datetime
 
@@ -204,7 +204,7 @@ class EarlyStopping:
             self.best_score = current_score
             self.epochs_no_improve = 0
 
-early_stopping = EarlyStopping(patience=20, min_delta=0.01)
+early_stopping = EarlyStopping(patience=50, min_delta=0.01)
 
 BUFFER_SIZE = 1000
 BATCH_SIZE = 128
@@ -215,7 +215,7 @@ moving_average = []
 v_losses = []
 p_losses = []
 
-MAX_REWARD = 115
+MAX_REWARD = 680
 
 replay_buffer = ReplayBuffer(BUFFER_SIZE, BATCH_SIZE)
 
@@ -235,7 +235,7 @@ policy_p = PolicyP(action_space_size)
 policy_p.compile(optimizer=optimizer_p, loss=tf.keras.losses.CategoricalCrossentropy(), metrics=[tf.keras.metrics.CategoricalCrossentropy()])
 
 
-log_dir = "logs/alpha/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+log_dir = "logs/alpha/pacman_golog"
 summary_writer = tf.summary.create_file_writer(log_dir)
 
 for e in range(episodes):
